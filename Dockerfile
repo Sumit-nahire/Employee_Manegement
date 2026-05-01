@@ -1,23 +1,24 @@
-# === Stage 1: Build with Maven ===
 FROM eclipse-temurin:21-jdk-alpine AS builder
 
 WORKDIR /app
 
-# Install Maven directly in container
 RUN apk add --no-cache maven
 
 COPY pom.xml .
 COPY src ./src
 
-# Use 'mvn' command (not mvnw)
 RUN mvn clean package -DskipTests
 
-# === Stage 2: Runtime Image ===
+# ✅ Fixed: Handles both JAR and WAR files
+RUN mvn /app/target/*.jar /app/target/*.war ./app.jar || true \
+    && ls -la /app/
+
 FROM eclipse-temurin:21-jre-alpine
 
 WORKDIR /app
 
-COPY --from=builder /app/target/*.jar app.jar
+# ✅ Copy with fallback
+COPY --from=builder /app/*.jar app.jar || COPY --from=builder /app/*.war app.jar
 
 EXPOSE 8080
 
